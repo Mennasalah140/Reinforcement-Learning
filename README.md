@@ -1,4 +1,4 @@
-## 📌 Grid Maze — Policy Iteration (Q&A)
+##  Grid Maze — Policy Iteration (Q&A)
 
 This section contains detailed answers to the assignment questions related to Policy Iteration on a 5×5 stochastic Grid Maze environment.
 
@@ -124,9 +124,6 @@ For dynamic environments, use **online RL methods** such as:
 - Q-Learning
 - SARSA
 - DQN / Actor-Critic
-
----
-
 
 ---
 
