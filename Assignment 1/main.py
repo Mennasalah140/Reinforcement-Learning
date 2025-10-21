@@ -6,15 +6,39 @@ import os
 
 from grid_maze_env import GridMazeEnv
 from policy_iteration import (
-    policy_iteration_solver, state_to_coords, coords_to_state
+    policy_iteration_solver, state_to_coords, coords_to_state,
 )
 
+# def generate_random_fixed_config():
+#     """
+#     Generates four unique, random coordinates for S, G, X1, and X2.
+#     """
+#     # Create an array of all possible cell indices (0 to 24)
+#     all_cells = np.arange(CELL_COUNT)
+    
+#     # Shuffle the indices and pick the first four for the positions
+#     np.random.shuffle(all_cells)
+    
+#     # Helper to convert flat index to (x, y) coordinates
+#     def to_coords(flat_index):
+#         x = flat_index % GRID_SIZE
+#         y = flat_index // GRID_SIZE
+#         return (x, y)
+
+#     # Assign the first four unique cells
+#     start_pos = to_coords(all_cells[0])
+#     goal_pos = to_coords(all_cells[1])
+#     bad_cell_1 = to_coords(all_cells[2])
+#     bad_cell_2 = to_coords(all_cells[3])
+    
+#     return start_pos, goal_pos, bad_cell_1, bad_cell_2
+
 # --- Define a Fixed Maze Configuration (Needed for PI training) ---
-# NOTE: To answer Q3, you should run PI on this configuration.
-START_POS = (0, 0) # Fixed starting point for applying the learned policy
+START_POS = (0, 0) 
 GOAL_POS = (4, 4)
 BAD_CELL_1 = (1, 1)
 BAD_CELL_2 = (3, 3)
+# START_POS, GOAL_POS, BAD_CELL_1, BAD_CELL_2 = generate_random_fixed_config()
 FIXED_CONFIG_COORDS = (START_POS, GOAL_POS, BAD_CELL_1, BAD_CELL_2)
 
 def train_and_run_policy():
@@ -43,11 +67,11 @@ def train_and_run_policy():
     # Initialize the custom environment, must use 'rgb_array' for video recording
     env = GridMazeEnv(render_mode="rgb_array")
     
-    # Apply the RecordVideo Wrapper (Task 6)
+    # Apply the RecordVideo Wrapper 
     env = RecordVideo(
         env, 
         video_folder=video_dir, 
-        episode_trigger=lambda x: x == 0, # Record the first episode
+        episode_trigger=lambda x: x == 0, 
         name_prefix="PolicyIteration_Agent"
     )
 
