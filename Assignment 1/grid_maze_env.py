@@ -10,7 +10,7 @@ WINDOW_SIZE = 500
 CELL_PIXEL_SIZE = WINDOW_SIZE // GRID_SIZE
 
 # --- Reward Function Design (Your choice for the assignment) ---
-# Rationale: Small negative reward encourages shortest path; large terminal rewards define goal/danger.
+# Reason: Small negative reward encourages shortest path; large terminal rewards define goal/danger.
 DEFAULT_REWARD = -1       # Cost per step 
 GOAL_REWARD = 100         # High positive reward for reaching the goal (G)
 BAD_CELL_REWARD = -100    # High negative punishment for hitting a bad cell (X)

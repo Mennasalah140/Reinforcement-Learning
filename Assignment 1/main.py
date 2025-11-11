@@ -6,39 +6,39 @@ import os
 
 from grid_maze_env import GridMazeEnv
 from policy_iteration import (
-    policy_iteration_solver, state_to_coords, coords_to_state,
+    policy_iteration_solver, state_to_coords, coords_to_state,CELL_COUNT, GRID_SIZE
 )
 
-# def generate_random_fixed_config():
-#     """
-#     Generates four unique, random coordinates for S, G, X1, and X2.
-#     """
-#     # Create an array of all possible cell indices (0 to 24)
-#     all_cells = np.arange(CELL_COUNT)
+def generate_random_fixed_config():
+    """
+    Generates four unique, random coordinates for S, G, X1, and X2.
+    """
+    # Create an array of all possible cell indices (0 to 24)
+    all_cells = np.arange(CELL_COUNT)
     
-#     # Shuffle the indices and pick the first four for the positions
-#     np.random.shuffle(all_cells)
+    # Shuffle the indices and pick the first four for the positions
+    np.random.shuffle(all_cells)
     
-#     # Helper to convert flat index to (x, y) coordinates
-#     def to_coords(flat_index):
-#         x = flat_index % GRID_SIZE
-#         y = flat_index // GRID_SIZE
-#         return (x, y)
+    # Helper to convert flat index to (x, y) coordinates
+    def to_coords(flat_index):
+        x = flat_index % GRID_SIZE
+        y = flat_index // GRID_SIZE
+        return (x, y)
 
-#     # Assign the first four unique cells
-#     start_pos = to_coords(all_cells[0])
-#     goal_pos = to_coords(all_cells[1])
-#     bad_cell_1 = to_coords(all_cells[2])
-#     bad_cell_2 = to_coords(all_cells[3])
+    # Assign the first four unique cells
+    start_pos = to_coords(all_cells[0])
+    goal_pos = to_coords(all_cells[1])
+    bad_cell_1 = to_coords(all_cells[2])
+    bad_cell_2 = to_coords(all_cells[3])
     
-#     return start_pos, goal_pos, bad_cell_1, bad_cell_2
+    return start_pos, goal_pos, bad_cell_1, bad_cell_2
 
-# --- Define a Fixed Maze Configuration (Needed for PI training) ---
-START_POS = (0, 0) 
-GOAL_POS = (4, 4)
-BAD_CELL_1 = (1, 1)
-BAD_CELL_2 = (3, 3)
-# START_POS, GOAL_POS, BAD_CELL_1, BAD_CELL_2 = generate_random_fixed_config()
+# # --- Define a Fixed Maze Configuration (Needed for PI training) ---
+# START_POS = (0, 0) 
+# GOAL_POS = (4, 4)
+# BAD_CELL_1 = (1, 1)
+# BAD_CELL_2 = (3, 3)
+START_POS, GOAL_POS, BAD_CELL_1, BAD_CELL_2 = generate_random_fixed_config()
 FIXED_CONFIG_COORDS = (START_POS, GOAL_POS, BAD_CELL_1, BAD_CELL_2)
 
 def train_and_run_policy():
@@ -55,7 +55,7 @@ def train_and_run_policy():
     print(f"PI Converged in {iterations} iterations.")
     
     # Optional: Display the learned policy (0:R, 1:U, 2:L, 3:D)
-    policy_map = policy_final.reshape(5, 5)
+    policy_map = policy_final.reshape(GRID_SIZE, GRID_SIZE)
     print("\nLearned Policy Map (0:R, 1:U, 2:L, 3:D):\n", policy_map)
 
     print("\n--- 2. Applying Learned Policy to Gym Environment and Recording ---")
@@ -101,7 +101,7 @@ def train_and_run_policy():
         total_reward += reward
         step += 1
         
-        # Safety break for long episodes (e.g., if agent gets stuck)
+        # Safety break for long episodes 
         if step > 200:
             print("Episode truncated after 200 steps.")
             break

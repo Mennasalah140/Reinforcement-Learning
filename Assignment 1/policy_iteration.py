@@ -49,8 +49,6 @@ def get_possible_transitions(s, action):
         next_y = np.clip(y + dy, 0, GRID_SIZE - 1)
         next_s = coords_to_state(next_x, next_y)
         
-        # NOTE: Reward calculation is NOT done here for true MDP P-matrix, 
-        # but is done in PI function for state-action-state' triple.
         transitions.append((prob, next_s))
         
     return transitions
