@@ -9,6 +9,9 @@ from replay_memory import ReplayMemory, Transition
 
 class DQNAgent:
     def __init__(self, state_dim, action_dim, device, is_ddqn, hyperparams):
+        # Store all hyperparams for easy access (especially seed for testing)
+        self.hyperparams = hyperparams
+
         # Hyperparameters
         self.GAMMA = hyperparams['gamma']
         self.LR = hyperparams['learning_rate']
@@ -23,7 +26,7 @@ class DQNAgent:
         self.action_dim = action_dim
         self.steps_done = 0
 
-        # NEW: Placeholder for continuous action space object (used by Pendulum)
+        # Placeholder for continuous action space object (used by Pendulum)
         self.continuous_action_space = None 
 
         # Initialize Policy and Target Networks
@@ -76,7 +79,6 @@ class DQNAgent:
         if self.is_ddqn:
             # DDQN: Policy Net selects a*, Target Net evaluates Q(s', a*)
             next_actions = self.policy_net(non_final_next_states).argmax(1).detach()
-            # Unsqueeze/squeeze is needed to manage batch dimension for gather
             next_state_values[non_final_mask] = self.target_net(non_final_next_states).gather(1, next_actions.unsqueeze(1)).squeeze(1)
         else:
             # DQN: Target Net selects and evaluates max Q(s', a)

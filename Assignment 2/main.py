@@ -1,43 +1,89 @@
 import os
 import torch
 import wandb
-import gymnasium as gym # Required for checking action space type
+import gymnasium as gym
 from train_utils import train_agent, test_agent, DEVICE
 from dqn_agent import DQNAgent
 
 # --- Define Experiments ---
 ENVIRONMENTS = [
     'CartPole-v1', 
-    'Acrobot-v1', 
-    'MountainCar-v0', 
-    'Pendulum-v1' 
+    # 'Acrobot-v1', 
+    # 'MountainCar-v0', 
+    # 'Pendulum-v1' 
 ]
 
-# Base Hyperparameters (Increased episodes for harder environments)
-BASE_HYPERPARAMS = {
-    'gamma': 0.99,
-    'learning_rate': 1e-4,
-    'memory_size': 10000,
-    'batch_size': 64,
-    'eps_start': 0.9,
-    'eps_end': 0.05,
-    'eps_decay': 10000, # Increased decay steps for more exploration
-    'num_episodes': 100 # Increased episodes for harder environments
+# --- BASE HYPERPARAMETERS PER ENVIRONMENT ---
+# Target Update Freq (steps) and Seed added to each base config.
+ENV_BASE_HYPERPARAMS = {
+    'CartPole-v1': {
+        'gamma': 0.99, 
+        'learning_rate': 2e-4, 
+        'memory_size': 50000, 
+        'batch_size': 64, 
+        'eps_start': 1.0, 
+        'eps_end': 0.01, 
+        'eps_decay': 1000, 
+        'num_episodes': 300, 
+        'target_update_freq': 200, 
+        'seed': 100
+    },
+    'Acrobot-v1': {
+        'gamma': 0.999, 
+        'learning_rate': 2e-4, 
+        'memory_size': 50000, 
+        'batch_size': 128, 
+        'eps_start': 1.0, 
+        'eps_end': 0.01, 
+        'eps_decay': 1000, 
+        'num_episodes': 500,
+        'target_update_freq': 500, 
+        'seed': 100 
+    },
+    'MountainCar-v0': {
+        'gamma': 0.999, 
+        'learning_rate': 1e-3, 
+        'memory_size': 20000, 
+        'batch_size': 64, 
+        'eps_start': 1.0, 
+        'eps_end': 0.01, 
+        'eps_decay': 15000, 
+        'num_episodes': 500,
+        'target_update_freq': 200, 
+        'seed': 42 # Optimized for pumping/momentum
+    },
+    'Pendulum-v1': {
+        'gamma': 0.99, 
+        'learning_rate': 1e-4, 
+        'memory_size': 10000, 
+        'batch_size': 64, 
+        'eps_start': 0.9, 
+        'eps_end': 0.05, 
+        'eps_decay': 10000, 
+        'num_episodes': 500, 
+        'target_update_freq': 200, 
+        'seed': 42 # Standard baseline for discretized control
+    }
 }
 
-# --- Define Hyperparameter Sweep Configurations ---
-SWEEP_CONFIGS = [
-    # BASELINES
-    {'name': 'DQN_BASE', 'is_ddqn': False, **BASE_HYPERPARAMS},
-    {'name': 'DDQN_BASE', 'is_ddqn': True, **BASE_HYPERPARAMS},
-    
-    # # TUNING FOR Q3: Example: Test effect of Gamma (Discount Factor)
-    # {'name': 'DDQN_GAMMA_0.8', 'is_ddqn': True, **{k:v for k,v in BASE_HYPERPARAMS.items() if k!='gamma'}, 'gamma': 0.8},
-    # {'name': 'DDQN_GAMMA_0.999', 'is_ddqn': True, **{k:v for k,v in BASE_HYPERPARAMS.items() if k!='gamma'}, 'gamma': 0.999},
+# --- SWEEP CONFIGURATIONS (For Question 3 Analysis) ---
+SWEEP_VARIATIONS = {
+    # BASELINES (DQN vs DDQN comparison - Q1)
+    'DQN_BASE': {'is_ddqn': False},
+    'DDQN_BASE': {'is_ddqn': True},
 
-    # # TUNING FOR Q3: Example: Test effect of Learning Rate
-    # {'name': 'DDQN_LR_1e-3', 'is_ddqn': True, **{k:v for k,v in BASE_HYPERPARAMS.items() if k!='learning_rate'}, 'learning_rate': 1e-3},
-]
+    # GAMMA SWEEP (Test effect of Discount Factor)
+    'DDQN_GAMMA_0.9': {'is_ddqn': True, 'gamma': 0.9},
+    'DDQN_GAMMA_0.9999': {'is_ddqn': True, 'gamma': 0.9999},
+
+    # LEARNING RATE SWEEP (Test effect of NN Learning Rate)
+    'DDQN_LR_1e-5': {'is_ddqn': True, 'learning_rate': 1e-5}, 
+    'DDQN_LR_1e-3': {'is_ddqn': True, 'learning_rate': 1e-3},
+
+    # EPSILON DECAY SWEEP (Test effect of Exploration Speed)
+    'DDQN_EPS_FAST': {'is_ddqn': True, 'eps_decay': 500}, # Fast decay (less exploration)
+    'DDQN_EPS_SLOW': {'is_ddqn': True, 'eps_decay': 50000}, # Slow decay (more exploration)
+}
 
 
 def run_experiment(env_name, config):
@@ -89,9 +135,18 @@ def run_experiment(env_name, config):
 
 
 if __name__ == "__main__":
-    # Note: Ensure you have installed all required libraries: gymnasium, pytorch, wandb, numpy
     
-    # You must run all sweeps to answer Q3!
+    # Iterate through all four environments
     for env_name in ENVIRONMENTS:
-        for config in SWEEP_CONFIGS:
-            run_experiment(env_name, config)
+        base_config = ENV_BASE_HYPERPARAMS[env_name]
+        
+        # Iterate through all sweep variations (including the two baselines)
+        for sweep_name, sweep_params in SWEEP_VARIATIONS.items():
+            
+            # Combine base parameters with sweep-specific overrides
+            final_config = base_config.copy()
+            final_config.update(sweep_params)
+            final_config['name'] = sweep_name # Add unique name for W&B logging
+            
+            # Run the experiment
+            run_experiment(env_name, final_config)
