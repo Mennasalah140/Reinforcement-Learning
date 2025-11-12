@@ -5,7 +5,7 @@ import gymnasium as gym
 from train_utils import train_agent, test_agent, DEVICE
 from dqn_agent import DQNAgent
 
-# --- Define Experiments ---
+# Experiments
 ENVIRONMENTS = [
     # 'CartPole-v1', 
     # 'Acrobot-v1', 
@@ -13,8 +13,7 @@ ENVIRONMENTS = [
     'Pendulum-v1' 
 ]
 
-# --- OPTIMIZED HYPERPARAMETERS PER ENVIRONMENT ---
-# Based on research papers, Dopamine configs, and empirical studies
+# HYPERPARAMETERS PER ENVIRONMENT
 ENV_BASE_HYPERPARAMS = {
     'CartPole-v1': {
         'gamma': 0.99,
@@ -66,9 +65,8 @@ ENV_BASE_HYPERPARAMS = {
     },
 }
 
-# --- SWEEP CONFIGURATIONS (For Question 3 Analysis) ---
+# SWEEP CONFIGURATIONS 
 SWEEP_VARIATIONS = {
-    # BASELINES (DQN vs DDQN comparison - Q1)
     'DQN_BASE': {'is_ddqn': False},
     'DDQN_BASE': {'is_ddqn': True},
 
@@ -97,7 +95,6 @@ def run_experiment(env_name, config):
     temp_env = gym.make(env_name)
     state_dim = temp_env.observation_space.shape[0]
     
-    # Determine Action Dimension (5 for Pendulum, otherwise use env.action_space.n)
     if 'Pendulum' in env_name:
         action_dim = 5 
     elif isinstance(temp_env.action_space, gym.spaces.Discrete):
@@ -114,7 +111,7 @@ def run_experiment(env_name, config):
     print(f"\n--- Starting Training: {run_name} ---")
     trained_agent = train_agent(env_name, agent, config, config['num_episodes'], log_wandb=True)
 
-    # 2. Testing Phase (100 tests for stability, Q2)
+    # 2. Testing Phase (100 tests for stability)
     print(f"\n--- Starting Testing: {run_name} (100 trials) ---")
     avg_duration, std_duration, test_durations, avg_reward, std_reward = test_agent(env_name, trained_agent, num_tests=100, record_video=True)
     
@@ -127,12 +124,12 @@ def run_experiment(env_name, config):
         "test/std_episode_duration": std_duration,
         "test/avg_reward": avg_reward,
         "test/std_reward": std_reward,
-        "test/durations_table": duration_table,  # Log the new table
+        "test/durations_table": duration_table,  
         "Final_Status": "Completed",
         "Algorithm": "DDQN" if config['is_ddqn'] else "DQN"
     })
     
-    # Print results to console (for Q2)
+    # Print results to console
     print(f"\nRESULTS: {run_name}")
     print(f"  Average Test Duration (100 trials): {avg_duration:.2f}")
     print(f"  Stability on Duration (Std Dev): {std_duration:.2f}")
@@ -148,13 +145,12 @@ if __name__ == "__main__":
     for env_name in ENVIRONMENTS:
         base_config = ENV_BASE_HYPERPARAMS[env_name]
         
-        # Iterate through all sweep variations (including the two baselines)
+        # Iterate through all sweep variations 
         for sweep_name, sweep_params in SWEEP_VARIATIONS.items():
             
-            # Combine base parameters with sweep-specific overrides
             final_config = base_config.copy()
             final_config.update(sweep_params)
-            final_config['name'] = sweep_name # Add unique name for W&B logging
+            final_config['name'] = sweep_name 
             
             # Run the experiment
             run_experiment(env_name, final_config)

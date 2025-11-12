@@ -1,7 +1,6 @@
 import random
 from collections import namedtuple, deque
 
-# Define the Transition structure (state, action, next_state, reward)
 Transition = namedtuple('Transition', 
                         ('state', 'action', 'next_state', 'reward'))
 

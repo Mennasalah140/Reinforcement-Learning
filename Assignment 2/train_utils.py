@@ -23,10 +23,9 @@ def map_discrete_to_continuous(discrete_action_index, num_discrete_actions, cont
     min_val = continuous_space.low[0]
     max_val = continuous_space.high[0]
     
-    # Linearly space the range of actions
     action_range = np.linspace(min_val, max_val, num_discrete_actions)
     
-    # Return the corresponding continuous value in a numpy array format
+    # Return the corresponding continuous value
     return np.array([action_range[discrete_action_index]], dtype=np.float32)
 
 
@@ -35,14 +34,13 @@ def train_agent(env_name, agent, hyperparams, num_episodes, log_wandb=True):
     Main training loop for a single agent on a single environment.
     Uses target_update_freq from hyperparams.
     """
-    # --- Load Hyperparameters ---
     TARGET_UPDATE_FREQ = hyperparams.get('target_update_freq', 200)
 
-    # --- Environment Setup ---
+    # Environment Setup
     env = gym.make(env_name)
     num_discrete_actions = 5 
     
-    # PENDULUM FIX: DISCRETIZE ACTION SPACE
+    # PENDULUM : DISCRETIZE ACTION SPACE
     if 'Pendulum' in env_name:
         agent.continuous_action_space = env.action_space
         env.action_space = gym.spaces.Discrete(num_discrete_actions) 
@@ -76,11 +74,10 @@ def train_agent(env_name, agent, hyperparams, num_episodes, log_wandb=True):
             obs, reward, terminated, truncated, info = env.step(env_action)
             done = terminated or truncated
             
-            # Convert transition elements to tensors
             reward = torch.tensor([reward], device=DEVICE)
             next_state = preprocess_state(obs, DEVICE) if not done else None
             
-            # 3. Store Transition (We store the discrete action index)
+            # 3. Store Transition
             agent.memory.push(state, action, next_state, reward)
             
             state = next_state
@@ -94,7 +91,6 @@ def train_agent(env_name, agent, hyperparams, num_episodes, log_wandb=True):
             if log_wandb and loss is not None:
                 wandb.log({"train/loss": loss}, step=total_steps)
 
-            # Update the Target Network periodically based on total steps
             if total_steps % TARGET_UPDATE_FREQ == 0:
                 agent.update_target_net()
             
@@ -116,13 +112,12 @@ def test_agent(env_name, agent, num_tests=100, record_video=False):
     """
     Tests the trained agent for stability and records one video.
     """
-    # --- Environment Setup (Must match training's action space) ---
     if record_video:
         video_dir = f"./videos/{env_name}_{'DDQN' if agent.is_ddqn else 'DQN'}"
         env = RecordVideo(gym.make(env_name, render_mode="rgb_array"), 
-                          video_folder=video_dir, 
-                          episode_trigger=lambda x: x == 0, 
-                          name_prefix="Trained_Agent_Test")
+                            video_folder=video_dir, 
+                            episode_trigger=lambda x: x == 0, 
+                            name_prefix="Trained_Agent_Test")
     else:
         env = gym.make(env_name)
     
@@ -149,7 +144,6 @@ def test_agent(env_name, agent, num_tests=100, record_video=False):
             with torch.no_grad():
                 discrete_action_index = agent.policy_net(state).max(1)[1].view(1, 1).item()
             
-            # --- Perform Step with Correct Action Type ---
             if 'Pendulum' in env_name:
                 env_action = map_discrete_to_continuous(
                     discrete_action_index, 
@@ -166,7 +160,6 @@ def test_agent(env_name, agent, num_tests=100, record_video=False):
             state = preprocess_state(obs, DEVICE) if not done else None
             episode_steps += 1
             
-            # Safety limit to prevent infinite episodes
             if episode_steps > 1000: 
                 break 
                 

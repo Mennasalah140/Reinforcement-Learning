@@ -9,7 +9,6 @@ from replay_memory import ReplayMemory, Transition
 
 class DQNAgent:
     def __init__(self, state_dim, action_dim, device, is_ddqn, hyperparams):
-        # Store all hyperparams for easy access (especially seed for testing)
         self.hyperparams = hyperparams
 
         # Hyperparameters
@@ -35,7 +34,6 @@ class DQNAgent:
             torch.cuda.manual_seed(seed)
             torch.cuda.manual_seed_all(seed)
 
-        # Placeholder for continuous action space object (used by Pendulum)
         self.continuous_action_space = None 
 
         # Initialize Policy and Target Networks
@@ -51,7 +49,7 @@ class DQNAgent:
         """Epsilon-greedy action selection."""
         sample = random.random()
         
-        # Calculate epsilon threshold (exponential decay)
+        # Calculate epsilon threshold (decay)
         eps_threshold = self.EPS_END + (self.EPS_START - self.EPS_END) * \
                         math.exp(-1. * self.steps_done / self.EPS_DECAY)
         self.steps_done += 1
@@ -86,13 +84,11 @@ class DQNAgent:
         # Next state values initialization
         next_state_values = torch.zeros(self.BATCH_SIZE, device=self.device)
         
-        # --- CORRECTED DDQN / DQN Logic ---
-        with torch.no_grad():  # No gradients needed for target computation
+        # DDQN / DQN Logic
+        with torch.no_grad():  
             if self.is_ddqn:
                 # DDQN: Policy Net selects action, Target Net evaluates it
-                # 1. Use policy net to select best actions for next states
                 next_actions = self.policy_net(non_final_next_states).argmax(1)
-                # 2. Use target net to evaluate those actions
                 next_state_values[non_final_mask] = self.target_net(non_final_next_states).gather(1, next_actions.unsqueeze(1)).squeeze(1)
             else:
                 # DQN: Target Net both selects and evaluates
@@ -101,7 +97,7 @@ class DQNAgent:
         # Compute the Q-Target (R + gamma * V(s'))
         Q_target = reward_batch + (next_state_values * self.GAMMA)
 
-        # Compute Smooth L1 Loss (Huber Loss)
+        # Compute Loss 
         criterion = nn.SmoothL1Loss()
         loss = criterion(Q_current, Q_target.unsqueeze(1))
         
@@ -109,7 +105,7 @@ class DQNAgent:
         self.optimizer.zero_grad()
         loss.backward()
         
-        # Gradient clipping for stability (critical for convergence)
+        # Gradient clipping for stability (Convergence)
         torch.nn.utils.clip_grad_value_(self.policy_net.parameters(), 100)
         
         self.optimizer.step()

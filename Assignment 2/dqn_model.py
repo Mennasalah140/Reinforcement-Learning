@@ -14,14 +14,12 @@ class DQN(nn.Module):
         Output: Q-value for each action (n_actions)
         """
         super(DQN, self).__init__()
-        # Layers defined based on the example structure (e.g., [cite: 345])
         self.layer1 = nn.Linear(n_observations, 128)
         self.layer2 = nn.Linear(128, 128)
         self.layer3 = nn.Linear(128, n_actions)
 
     def forward(self, x):
         """Forward pass through the network."""
-        # The input x might be a batch, hence the reshape if needed
         if x.dim() == 1:
             x = x.unsqueeze(0)
             
