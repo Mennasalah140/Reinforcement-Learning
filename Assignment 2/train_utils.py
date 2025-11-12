@@ -4,9 +4,8 @@ import torch
 import numpy as np
 import wandb
 import time
+import random
 from gymnasium.wrappers import RecordVideo
-# Assuming DQNAgent is imported from dqn_agent
-# Assuming DEVICE is defined
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -34,11 +33,10 @@ def map_discrete_to_continuous(discrete_action_index, num_discrete_actions, cont
 def train_agent(env_name, agent, hyperparams, num_episodes, log_wandb=True):
     """
     Main training loop for a single agent on a single environment.
-    Uses target_update_freq and seed from hyperparams.
+    Uses target_update_freq from hyperparams.
     """
     # --- Load Hyperparameters ---
-    # Default to 10 if missing target_update_freq (per episode) or 200 (per step)
-    TARGET_UPDATE_FREQ = hyperparams.get('target_update_freq', 200) 
+    TARGET_UPDATE_FREQ = hyperparams.get('target_update_freq', 200)
 
     # --- Environment Setup ---
     env = gym.make(env_name)
@@ -52,7 +50,7 @@ def train_agent(env_name, agent, hyperparams, num_episodes, log_wandb=True):
     total_steps = 0
     
     for episode in range(num_episodes):
-        # Set the seed for the environment reset
+        # Reset environment
         state, info = env.reset()
         state = preprocess_state(state, DEVICE)
         
@@ -117,10 +115,7 @@ def train_agent(env_name, agent, hyperparams, num_episodes, log_wandb=True):
 def test_agent(env_name, agent, num_tests=100, record_video=False):
     """
     Tests the trained agent for stability and records one video.
-    Uses seed from agent's initial hyperparams if available.
     """
-    # Use agent's hyperparams to access the seed for testing consistency
-    
     # --- Environment Setup (Must match training's action space) ---
     if record_video:
         video_dir = f"./videos/{env_name}_{'DDQN' if agent.is_ddqn else 'DQN'}"
@@ -141,7 +136,7 @@ def test_agent(env_name, agent, num_tests=100, record_video=False):
     rewards = []
     
     for test in range(num_tests):
-        # Reset with test number as seed offset for independent trials
+        # Reset environment
         state, info = env.reset()
         state = preprocess_state(state, DEVICE)
         
@@ -171,7 +166,10 @@ def test_agent(env_name, agent, num_tests=100, record_video=False):
             state = preprocess_state(obs, DEVICE) if not done else None
             episode_steps += 1
             
-            if episode_steps > 1000: break 
+            # Safety limit to prevent infinite episodes
+            if episode_steps > 1000: 
+                break 
+                
         print(f"Test {test+1}/{num_tests}, Steps: {episode_steps}, Reward: {episode_reward:.2f}")
         test_durations.append(episode_steps)
         rewards.append(episode_reward)

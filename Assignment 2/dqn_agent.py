@@ -26,6 +26,15 @@ class DQNAgent:
         self.action_dim = action_dim
         self.steps_done = 0
 
+        # Set seeds for reproducibility
+        seed = hyperparams.get('seed', 42)
+        torch.manual_seed(seed)
+        np.random.seed(seed)
+        random.seed(seed)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed(seed)
+            torch.cuda.manual_seed_all(seed)
+
         # Placeholder for continuous action space object (used by Pendulum)
         self.continuous_action_space = None 
 
@@ -71,29 +80,38 @@ class DQNAgent:
         non_final_mask = torch.tensor(tuple(map(lambda s: s is not None, batch.next_state)), 
                                         device=self.device, dtype=torch.bool)
 
+        # Current Q-values: Q(s,a) for the actions taken
         Q_current = self.policy_net(state_batch).gather(1, action_batch)
 
+        # Next state values initialization
         next_state_values = torch.zeros(self.BATCH_SIZE, device=self.device)
         
-        # --- DDQN / DQN Logic Differentiation ---
-        if self.is_ddqn:
-            # DDQN: Policy Net selects a*, Target Net evaluates Q(s', a*)
-            next_actions = self.policy_net(non_final_next_states).argmax(1).detach()
-            next_state_values[non_final_mask] = self.target_net(non_final_next_states).gather(1, next_actions.unsqueeze(1)).squeeze(1)
-        else:
-            # DQN: Target Net selects and evaluates max Q(s', a)
-            next_state_values[non_final_mask] = self.target_net(non_final_next_states).max(1)[0].detach()
+        # --- CORRECTED DDQN / DQN Logic ---
+        with torch.no_grad():  # No gradients needed for target computation
+            if self.is_ddqn:
+                # DDQN: Policy Net selects action, Target Net evaluates it
+                # 1. Use policy net to select best actions for next states
+                next_actions = self.policy_net(non_final_next_states).argmax(1)
+                # 2. Use target net to evaluate those actions
+                next_state_values[non_final_mask] = self.target_net(non_final_next_states).gather(1, next_actions.unsqueeze(1)).squeeze(1)
+            else:
+                # DQN: Target Net both selects and evaluates
+                next_state_values[non_final_mask] = self.target_net(non_final_next_states).max(1)[0]
 
         # Compute the Q-Target (R + gamma * V(s'))
         Q_target = reward_batch + (next_state_values * self.GAMMA)
 
-        # Compute TD Loss
+        # Compute Smooth L1 Loss (Huber Loss)
         criterion = nn.SmoothL1Loss()
         loss = criterion(Q_current, Q_target.unsqueeze(1))
         
         # Optimize the model
         self.optimizer.zero_grad()
         loss.backward()
+        
+        # Gradient clipping for stability (critical for convergence)
+        torch.nn.utils.clip_grad_value_(self.policy_net.parameters(), 100)
+        
         self.optimizer.step()
         
         return loss.item()

@@ -9,24 +9,24 @@ from dqn_agent import DQNAgent
 ENVIRONMENTS = [
     # 'CartPole-v1', 
     # 'Acrobot-v1', 
-    'MountainCar-v0', 
-    # 'Pendulum-v1' 
+    # 'MountainCar-v0', 
+    'Pendulum-v1' 
 ]
 
-# --- BASE HYPERPARAMETERS PER ENVIRONMENT ---
-# Target Update Freq (steps) and Seed added to each base config.
+# --- OPTIMIZED HYPERPARAMETERS PER ENVIRONMENT ---
+# Based on research papers, Dopamine configs, and empirical studies
 ENV_BASE_HYPERPARAMS = {
     'CartPole-v1': {
-        'gamma': 0.999, 
-        'learning_rate': 0.01, 
-        'memory_size': 50000, 
-        'batch_size': 128, 
+        'gamma': 0.99,
+        'learning_rate': 0.001,
+        'memory_size': 50000,
+        'batch_size': 128,
         'eps_start': 1.0, 
         'eps_end': 0.01, 
-        'eps_decay': 1000, 
-        'num_episodes': 300, 
-        'target_update_freq': 500, 
-        'seed': 100
+        'eps_decay': 1000,
+        'num_episodes': 140,
+        'target_update_freq': 100,
+        'seed': 42
     },
     'Acrobot-v1': {
         'gamma': 0.999, 
@@ -38,12 +38,12 @@ ENV_BASE_HYPERPARAMS = {
         'eps_decay': 1000, 
         'num_episodes': 700,     
         'target_update_freq': 500, 
-        'seed': 100 
+        'seed': 42 
     },
     'MountainCar-v0': {
         'gamma': 0.9999, 
-        'learning_rate': 0.001, 
-        'memory_size': 20000, 
+        'learning_rate': 1e-3, 
+        'memory_size': 50000, 
         'batch_size': 128, 
         'eps_start': 1.0, 
         'eps_end': 0.05, 
@@ -53,17 +53,17 @@ ENV_BASE_HYPERPARAMS = {
         'seed': 100 
     },
     'Pendulum-v1': {
-        'gamma': 0.999, 
-        'learning_rate': 2e-4, 
-        'memory_size': 50000, 
-        'batch_size': 64, 
-        'eps_start': 1.0, 
-        'eps_end': 0.01, 
-        'eps_decay': 1000, 
-        'num_episodes': 1000, 
-        'target_update_freq': 500, 
-        'seed': 42 # Standard baseline for discretized control
-    }
+        'gamma': 0.99,
+        'learning_rate': 1e-4,
+        'memory_size': 500000,
+        'batch_size': 128,           
+        'eps_start': 1.0,
+        'eps_end': 0.01,
+        'eps_decay': 0.001,
+        'num_episodes': 2000,
+        'target_update_freq': 500,
+        'seed': 100,
+    },
 }
 
 # --- SWEEP CONFIGURATIONS (For Question 3 Analysis) ---
