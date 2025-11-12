@@ -180,4 +180,4 @@ def test_agent(env_name, agent, num_tests=100, record_video=False):
     avg_duration = np.mean(test_durations)
     std_duration = np.std(test_durations)
     
-    return avg_duration, std_duration
+    return avg_duration, std_duration, test_durations

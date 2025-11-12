@@ -7,9 +7,9 @@ from dqn_agent import DQNAgent
 
 # --- Define Experiments ---
 ENVIRONMENTS = [
-    'CartPole-v1', 
+    # 'CartPole-v1', 
     # 'Acrobot-v1', 
-    # 'MountainCar-v0', 
+    'MountainCar-v0', 
     # 'Pendulum-v1' 
 ]
 
@@ -24,7 +24,7 @@ ENV_BASE_HYPERPARAMS = {
         'eps_start': 1.0, 
         'eps_end': 0.01, 
         'eps_decay': 1000, 
-        'num_episodes': 300, 
+        'num_episodes': 200, 
         'target_update_freq': 200, 
         'seed': 100
     },
@@ -36,21 +36,21 @@ ENV_BASE_HYPERPARAMS = {
         'eps_start': 1.0, 
         'eps_end': 0.01, 
         'eps_decay': 1000, 
-        'num_episodes': 500,
+        'num_episodes': 700,     
         'target_update_freq': 500, 
         'seed': 100 
     },
     'MountainCar-v0': {
-        'gamma': 0.999, 
-        'learning_rate': 1e-3, 
-        'memory_size': 20000, 
+        'gamma': 0.9999, 
+        'learning_rate': 5e-4, 
+        'memory_size': 50000, 
         'batch_size': 64, 
         'eps_start': 1.0, 
         'eps_end': 0.01, 
-        'eps_decay': 15000, 
-        'num_episodes': 500,
+        'eps_decay': 50000, 
+        'num_episodes': 1000,
         'target_update_freq': 200, 
-        'seed': 42 # Optimized for pumping/momentum
+        'seed': 100 
     },
     'Pendulum-v1': {
         'gamma': 0.99, 
@@ -72,17 +72,17 @@ SWEEP_VARIATIONS = {
     'DQN_BASE': {'is_ddqn': False},
     'DDQN_BASE': {'is_ddqn': True},
 
-    # GAMMA SWEEP (Test effect of Discount Factor)
-    'DDQN_GAMMA_0.9': {'is_ddqn': True, 'gamma': 0.9},
-    'DDQN_GAMMA_0.9999': {'is_ddqn': True, 'gamma': 0.9999},
+    # # GAMMA SWEEP (Test effect of Discount Factor)
+    # 'DDQN_GAMMA_0.9': {'is_ddqn': True, 'gamma': 0.9},
+    # 'DDQN_GAMMA_0.9999': {'is_ddqn': True, 'gamma': 0.9999},
 
-    # LEARNING RATE SWEEP (Test effect of NN Learning Rate)
-    'DDQN_LR_1e-5': {'is_ddqn': True, 'learning_rate': 1e-5}, 
-    'DDQN_LR_1e-3': {'is_ddqn': True, 'learning_rate': 1e-3},
+    # # LEARNING RATE SWEEP (Test effect of NN Learning Rate)
+    # 'DDQN_LR_1e-5': {'is_ddqn': True, 'learning_rate': 1e-5}, 
+    # 'DDQN_LR_1e-3': {'is_ddqn': True, 'learning_rate': 1e-3},
 
-    # EPSILON DECAY SWEEP (Test effect of Exploration Speed)
-    'DDQN_EPS_FAST': {'is_ddqn': True, 'eps_decay': 500}, # Fast decay (less exploration)
-    'DDQN_EPS_SLOW': {'is_ddqn': True, 'eps_decay': 50000}, # Slow decay (more exploration)
+    # # EPSILON DECAY SWEEP (Test effect of Exploration Speed)
+    # 'DDQN_EPS_FAST': {'is_ddqn': True, 'eps_decay': 500}, # Fast decay (less exploration)
+    # 'DDQN_EPS_SLOW': {'is_ddqn': True, 'eps_decay': 50000}, # Slow decay (more exploration)
 }
 
 
@@ -116,12 +116,16 @@ def run_experiment(env_name, config):
 
     # 2. Testing Phase (100 tests for stability, Q2)
     print(f"\n--- Starting Testing: {run_name} (100 trials) ---")
-    avg_duration, std_duration = test_agent(env_name, trained_agent, num_tests=100, record_video=True)
+    avg_duration, std_duration, test_durations = test_agent(env_name, trained_agent, num_tests=100, record_video=True)
+    
+    duration_data = [[duration] for duration in test_durations]
+    duration_table = wandb.Table(data=duration_data, columns=["Test Duration (Steps)"])
     
     # Log final results to W&B
     wandb.log({
         "test/avg_episode_duration": avg_duration,
         "test/std_episode_duration": std_duration,
+        "test/durations_table": duration_table,  # Log the new table
         "Final_Status": "Completed",
         "Algorithm": "DDQN" if config['is_ddqn'] else "DQN"
     })
