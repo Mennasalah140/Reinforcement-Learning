@@ -39,7 +39,6 @@ def train_agent(env_name, agent, hyperparams, num_episodes, log_wandb=True):
     # --- Load Hyperparameters ---
     # Default to 10 if missing target_update_freq (per episode) or 200 (per step)
     TARGET_UPDATE_FREQ = hyperparams.get('target_update_freq', 200) 
-    SEED = hyperparams.get('seed', None) # Use None if seed is not provided
 
     # --- Environment Setup ---
     env = gym.make(env_name)
@@ -54,7 +53,7 @@ def train_agent(env_name, agent, hyperparams, num_episodes, log_wandb=True):
     
     for episode in range(num_episodes):
         # Set the seed for the environment reset
-        state, info = env.reset(seed=SEED if SEED is None else SEED + episode)
+        state, info = env.reset()
         state = preprocess_state(state, DEVICE)
         
         episode_reward = 0
@@ -121,7 +120,6 @@ def test_agent(env_name, agent, num_tests=100, record_video=False):
     Uses seed from agent's initial hyperparams if available.
     """
     # Use agent's hyperparams to access the seed for testing consistency
-    SEED = agent.hyperparams.get('seed', None)
     
     # --- Environment Setup (Must match training's action space) ---
     if record_video:
@@ -143,8 +141,7 @@ def test_agent(env_name, agent, num_tests=100, record_video=False):
     
     for test in range(num_tests):
         # Reset with test number as seed offset for independent trials
-        seed_value = SEED if SEED is None else SEED + 1000 + test 
-        state, info = env.reset(seed=seed_value)
+        state, info = env.reset()
         state = preprocess_state(state, DEVICE)
         
         episode_steps = 0
@@ -172,7 +169,7 @@ def test_agent(env_name, agent, num_tests=100, record_video=False):
             episode_steps += 1
             
             if episode_steps > 1000: break 
-
+        print(f"Test {test+1}/{num_tests}, Steps: {episode_steps}")
         test_durations.append(episode_steps)
         
     env.close()

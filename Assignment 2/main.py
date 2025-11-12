@@ -7,9 +7,9 @@ from dqn_agent import DQNAgent
 
 # --- Define Experiments ---
 ENVIRONMENTS = [
-    # 'CartPole-v1', 
+    'CartPole-v1', 
     # 'Acrobot-v1', 
-    'MountainCar-v0', 
+    # 'MountainCar-v0', 
     # 'Pendulum-v1' 
 ]
 
@@ -24,7 +24,7 @@ ENV_BASE_HYPERPARAMS = {
         'eps_start': 1.0, 
         'eps_end': 0.01, 
         'eps_decay': 1000, 
-        'num_episodes': 200, 
+        'num_episodes': 300, 
         'target_update_freq': 200, 
         'seed': 100
     },
@@ -42,14 +42,14 @@ ENV_BASE_HYPERPARAMS = {
     },
     'MountainCar-v0': {
         'gamma': 0.9999, 
-        'learning_rate': 5e-4, 
+        'learning_rate': 1e-3, 
         'memory_size': 50000, 
-        'batch_size': 64, 
+        'batch_size': 128, 
         'eps_start': 1.0, 
-        'eps_end': 0.01, 
-        'eps_decay': 50000, 
+        'eps_end': 0.05, 
+        'eps_decay': 30000, 
         'num_episodes': 1000,
-        'target_update_freq': 200, 
+        'target_update_freq': 10, 
         'seed': 100 
     },
     'Pendulum-v1': {
