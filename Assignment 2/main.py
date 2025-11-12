@@ -125,6 +125,8 @@ def run_experiment(env_name, config):
     wandb.log({
         "test/avg_episode_duration": avg_duration,
         "test/std_episode_duration": std_duration,
+        "test/avg_reward": avg_reward,
+        "test/std_reward": std_reward,
         "test/durations_table": duration_table,  # Log the new table
         "Final_Status": "Completed",
         "Algorithm": "DDQN" if config['is_ddqn'] else "DQN"
