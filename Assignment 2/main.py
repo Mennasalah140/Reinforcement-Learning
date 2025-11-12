@@ -9,8 +9,8 @@ from dqn_agent import DQNAgent
 ENVIRONMENTS = [
     # 'CartPole-v1', 
     # 'Acrobot-v1', 
-    # 'MountainCar-v0', 
-    'Pendulum-v1' 
+    'MountainCar-v0', 
+    # 'Pendulum-v1' 
 ]
 
 # --- BASE HYPERPARAMETERS PER ENVIRONMENT ---
@@ -42,13 +42,13 @@ ENV_BASE_HYPERPARAMS = {
     },
     'MountainCar-v0': {
         'gamma': 0.9999, 
-        'learning_rate': 1e-3, 
-        'memory_size': 50000, 
+        'learning_rate': 0.001, 
+        'memory_size': 20000, 
         'batch_size': 128, 
         'eps_start': 1.0, 
         'eps_end': 0.05, 
-        'eps_decay': 1000, 
-        'num_episodes': 1000,
+        'eps_decay': 20000, 
+        'num_episodes': 1500,
         'target_update_freq': 500, 
         'seed': 100 
     },
