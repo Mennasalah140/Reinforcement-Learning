@@ -7,25 +7,25 @@ from dqn_agent import DQNAgent
 
 # --- Define Experiments ---
 ENVIRONMENTS = [
-    'CartPole-v1', 
+    # 'CartPole-v1', 
     # 'Acrobot-v1', 
     # 'MountainCar-v0', 
-    # 'Pendulum-v1' 
+    'Pendulum-v1' 
 ]
 
 # --- BASE HYPERPARAMETERS PER ENVIRONMENT ---
 # Target Update Freq (steps) and Seed added to each base config.
 ENV_BASE_HYPERPARAMS = {
     'CartPole-v1': {
-        'gamma': 0.99, 
-        'learning_rate': 2e-4, 
+        'gamma': 0.999, 
+        'learning_rate': 0.01, 
         'memory_size': 50000, 
-        'batch_size': 64, 
+        'batch_size': 128, 
         'eps_start': 1.0, 
         'eps_end': 0.01, 
         'eps_decay': 1000, 
         'num_episodes': 300, 
-        'target_update_freq': 200, 
+        'target_update_freq': 500, 
         'seed': 100
     },
     'Acrobot-v1': {
@@ -47,21 +47,21 @@ ENV_BASE_HYPERPARAMS = {
         'batch_size': 128, 
         'eps_start': 1.0, 
         'eps_end': 0.05, 
-        'eps_decay': 30000, 
+        'eps_decay': 1000, 
         'num_episodes': 1000,
-        'target_update_freq': 10, 
+        'target_update_freq': 500, 
         'seed': 100 
     },
     'Pendulum-v1': {
-        'gamma': 0.99, 
-        'learning_rate': 1e-4, 
-        'memory_size': 10000, 
+        'gamma': 0.999, 
+        'learning_rate': 2e-4, 
+        'memory_size': 50000, 
         'batch_size': 64, 
-        'eps_start': 0.9, 
-        'eps_end': 0.05, 
-        'eps_decay': 10000, 
-        'num_episodes': 500, 
-        'target_update_freq': 200, 
+        'eps_start': 1.0, 
+        'eps_end': 0.01, 
+        'eps_decay': 1000, 
+        'num_episodes': 1000, 
+        'target_update_freq': 500, 
         'seed': 42 # Standard baseline for discretized control
     }
 }
@@ -116,7 +116,7 @@ def run_experiment(env_name, config):
 
     # 2. Testing Phase (100 tests for stability, Q2)
     print(f"\n--- Starting Testing: {run_name} (100 trials) ---")
-    avg_duration, std_duration, test_durations = test_agent(env_name, trained_agent, num_tests=100, record_video=True)
+    avg_duration, std_duration, test_durations, avg_reward, std_reward = test_agent(env_name, trained_agent, num_tests=100, record_video=True)
     
     duration_data = [[duration] for duration in test_durations]
     duration_table = wandb.Table(data=duration_data, columns=["Test Duration (Steps)"])
@@ -133,8 +133,10 @@ def run_experiment(env_name, config):
     # Print results to console (for Q2)
     print(f"\nRESULTS: {run_name}")
     print(f"  Average Test Duration (100 trials): {avg_duration:.2f}")
-    print(f"  Stability (Std Dev): {std_duration:.2f}")
-    
+    print(f"  Stability on Duration (Std Dev): {std_duration:.2f}")
+    print(f"  Average Test Reward (100 trials): {avg_reward:.2f}")
+    print(f"  Stability on Reward (Std Dev): {std_reward:.2f}")
+
     wandb.finish()
 
 

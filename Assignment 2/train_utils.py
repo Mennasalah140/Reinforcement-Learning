@@ -138,6 +138,7 @@ def test_agent(env_name, agent, num_tests=100, record_video=False):
         env.action_space = gym.spaces.Discrete(num_discrete_actions) 
     
     test_durations = []
+    rewards = []
     
     for test in range(num_tests):
         # Reset with test number as seed offset for independent trials
@@ -145,6 +146,7 @@ def test_agent(env_name, agent, num_tests=100, record_video=False):
         state = preprocess_state(state, DEVICE)
         
         episode_steps = 0
+        episode_reward = 0
         done = False
         
         while not done:
@@ -163,18 +165,22 @@ def test_agent(env_name, agent, num_tests=100, record_video=False):
                 env_action = discrete_action_index
             
             obs, reward, terminated, truncated, info = env.step(env_action)
+            episode_reward += reward
             done = terminated or truncated
             
             state = preprocess_state(obs, DEVICE) if not done else None
             episode_steps += 1
             
             if episode_steps > 1000: break 
-        print(f"Test {test+1}/{num_tests}, Steps: {episode_steps}")
+        print(f"Test {test+1}/{num_tests}, Steps: {episode_steps}, Reward: {episode_reward:.2f}")
         test_durations.append(episode_steps)
+        rewards.append(episode_reward)
         
     env.close()
 
     avg_duration = np.mean(test_durations)
     std_duration = np.std(test_durations)
-    
-    return avg_duration, std_duration, test_durations
+    avg_reward = np.mean(rewards)
+    std_reward = np.std(rewards)
+
+    return avg_duration, std_duration, test_durations, avg_reward, std_reward
