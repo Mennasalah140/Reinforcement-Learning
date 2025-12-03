@@ -257,6 +257,8 @@ def test_agent(env_name, agent, num_tests=100, record_video=False):
 
     avg_duration = np.mean(test_durations)
     std_duration = np.std(test_durations)
+    avg_reward = np.mean(test_rewards)
+    std_reward = np.std(test_rewards)
     
     # Return the full list for W&B logging (Question 2)
-    return avg_duration, std_duration, test_durations
+    return avg_duration, std_duration, test_durations, avg_reward, std_reward
