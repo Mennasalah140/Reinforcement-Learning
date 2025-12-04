@@ -8,11 +8,10 @@ from ppo_agent import PPOAgent
 from sac_agent import SACAgent 
 
 ENVIRONMENTS = {
-    
-    # 'CartPole-v1': {'discrete': True, 'action_dim': 2},
-    # 'Acrobot-v1': {'discrete': True, 'action_dim': 3},
-    # 'MountainCar-v0': {'discrete': True, 'action_dim': 3},
-    'Pendulum-v1': {'discrete': True, 'action_dim': 5, 'sac_discrete': True} 
+    # 'CartPole-v1': {'discrete': True, 'action_dim': 2, 'torque': 1.0},
+    # 'Acrobot-v1': {'discrete': True, 'action_dim': 3, 'torque': 1.0},
+    'MountainCar-v0': {'discrete': True, 'action_dim': 3, 'torque': 1.0},
+    # 'Pendulum-v1': {'discrete': False, 'action_dim': 1, 'torque': 2.0} 
 }
 
 # HYPERPARAMETERS
@@ -143,27 +142,29 @@ SWEEP_VARIATIONS = {
 
 
 def create_agent(algorithm_name, env_details, config):
-    """Factory function to create the correct agent instance."""
-    env_name = config['env_name'] 
+    """Function to create the correct agent instance."""
     env = gym.make(env_name)
     state_dim = env.observation_space.shape[0]
     action_dim = env_details['action_dim']
     is_discrete = env_details['discrete']
+    torque = env_details['torque']
     env.close()
 
     if algorithm_name == 'A2C':
-        return A2CAgent(state_dim, action_dim, DEVICE, config, is_discrete)
+        agent = A2CAgent(state_dim, action_dim, DEVICE, config, is_discrete)
     elif algorithm_name == 'PPO':
-        return PPOAgent(state_dim, action_dim, DEVICE, config, is_discrete) 
+        agent = PPOAgent(state_dim, action_dim, DEVICE, config, is_discrete) 
     elif algorithm_name == 'SAC':
-        sac_action_dim = 1
-        is_discrete = env_details.get('sac_discrete', is_discrete)
-        return SACAgent(state_dim, sac_action_dim, DEVICE, config, is_discrete)
-    return None
+        agent = SACAgent(state_dim, action_dim, DEVICE, config, is_discrete)
+    else:
+        return None
+        
+    if not is_discrete:
+        agent.action_scale = torque
+        
+    return agent
 
-def run_experiment(env_name, config):
-    """Sets up W&B, trains, tests, and logs final results."""
-    
+def run_experiment(env_name, config):    
     # W&B Setup
     run_name = f"{env_name}_{config['name']}"
     wandb.init(project="CMPS458_PolicyGradient_Assignment", config=config, name=run_name, reinit=True)
@@ -174,17 +175,16 @@ def run_experiment(env_name, config):
     # Initialize Agent
     agent = create_agent(config['algorithm'], env_details, config)
 
-    # 1. Training Phase
+    # Training Phase
     print(f"\n--- Starting Training: {run_name} ---")
     trained_agent = train_agent_pg(env_name, agent, config, config['num_episodes'], log_wandb=True)
 
-    # 2. Testing Phase (100 tests for stability, Q2) [cite: 17]
+    # Testing Phase (100 tests) 
     print(f"\n--- Starting Testing: {run_name} (100 trials) ---")
-    avg_duration, std_duration, test_durations, avg_reward, std_reward = test_agent(env_name, trained_agent, num_tests=100, record_video=True)
+    avg_duration, std_duration, test_durations, avg_reward, std_reward, test_rewards = test_agent(env_name, trained_agent, num_tests=100, record_video=True)
     
-    # --- Logging Fix (Assignment Q2 Figure) ---
-    duration_data = [[duration] for duration in test_durations]
-    duration_table = wandb.Table(data=duration_data, columns=["Test Duration (Steps)"])
+    duration_data = [[duration] for duration in test_rewards]
+    duration_table = wandb.Table(data=duration_data, columns=["Test Reward"])
     
     # Log final results to W&B
     wandb.log({
@@ -197,7 +197,6 @@ def run_experiment(env_name, config):
         "Algorithm": config['algorithm']
     })
     
-    # Print results to console
     print(f"\nRESULTS: {run_name}")
     print(f"  Average Test Duration (100 trials): {avg_duration:.2f}")
     print(f"  Stability (Std Dev): {std_duration:.2f}")

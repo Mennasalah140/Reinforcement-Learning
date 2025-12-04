@@ -3,7 +3,7 @@ import torch.nn as nn
 from torch.distributions import Normal
 import numpy as np
 
-# A common constant to ensure log_std doesn't become too small
+# To ensure log_std doesn't become too small
 LOG_STD_MAX = 2
 LOG_STD_MIN = -20
 
@@ -29,7 +29,7 @@ class SquashedGaussianActor(nn.Module):
         log_std = self.log_std_min + 0.5 * (self.log_std_max - self.log_std_min) * (log_std + 1)
         std = torch.exp(log_std)
 
-        # Reparameterization Trick [cite: 1241]
+        # Reparameterization Trick
         pi_distribution = Normal(mu, std)
         if deterministic:
             pi_action = mu
@@ -44,7 +44,6 @@ class SquashedGaussianActor(nn.Module):
         else:
             log_prob = None
 
-        # Apply tanh squashing to keep action within [-1, 1] bounds
         action = torch.tanh(pi_action)
         return action, log_prob, mu
 

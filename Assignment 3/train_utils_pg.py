@@ -7,7 +7,6 @@ import random
 from gymnasium.wrappers import RecordVideo
 from pg_agent_base import PolicyGradientAgentBase 
 
-# --- Memory Classes (Consolidated for all files) ---
 class Transition(object):
     def __init__(self, state, action, reward, next_state, done):
         self.state = state
@@ -31,10 +30,9 @@ class ReplayMemory(object):
         self.position = (self.position + 1) % self.capacity
 
     def sample(self, batch_size):
-        """Samples a batch and converts Transition objects to tuples (FIXED)."""
+        """Samples a batch and converts Transition objects to tuples."""
         transitions = random.sample(self.memory, batch_size)
         
-        # FIX: Convert Transition objects into standard tuples for batch processing
         return [(t.state, t.action, t.reward, t.next_state, t.done) for t in transitions]
     
     def __len__(self):
@@ -42,7 +40,6 @@ class ReplayMemory(object):
     
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# --- Utility Functions ---
 def preprocess_state(state, device):
     """Converts numpy state array to a PyTorch tensor."""
     if isinstance(state, tuple):
@@ -54,9 +51,9 @@ def map_discrete_to_continuous(discrete_action_index, num_discrete_actions, cont
     min_val = continuous_space.low[0]
     max_val = continuous_space.high[0]
     action_range = np.linspace(min_val, max_val, num_discrete_actions)
+    
     return np.array([action_range[discrete_action_index]], dtype=np.float32)
 
-# --- Training Loop ---
 
 def train_agent_pg(env_name, agent, hyperparams, num_episodes, log_wandb=True):
     """
@@ -64,7 +61,7 @@ def train_agent_pg(env_name, agent, hyperparams, num_episodes, log_wandb=True):
     """
     SEED = hyperparams.get('seed', None)
     
-    # --- Environment Setup ---
+    # Environment Setup
     env = gym.make(env_name)
     num_discrete_actions = 5 
     is_discrete = hyperparams.get('discrete', True)
@@ -77,7 +74,7 @@ def train_agent_pg(env_name, agent, hyperparams, num_episodes, log_wandb=True):
     
     for episode in range(num_episodes):
         state, info = env.reset(seed=SEED if SEED is None else SEED + episode)
-        state_np = state # Store raw numpy state for memory push
+        state_np = state
         state = preprocess_state(state, DEVICE)
         
         episode_reward = 0
@@ -86,38 +83,31 @@ def train_agent_pg(env_name, agent, hyperparams, num_episodes, log_wandb=True):
         done = False
         
         while not done:
-            # 1. Action Selection
+            # Action Selection: returns the ready-to-use action
             action_output = agent.select_action(state)
             
-            # 2. Prepare Environment Action
+            # Prepare Environment Action
             env_action = action_output
-            action_to_store = action_output # Default action to store (NumPy array or int index)
+            action_to_store = action_output
 
-            if 'Pendulum' in env_name and agent.__class__.__name__ in ['A2CAgent', 'PPOAgent'] and is_discrete:
-                # A2C/PPO Discrete on Pendulum: Convert discrete index back to continuous torque value
-                env_action = map_discrete_to_continuous(action_output, num_discrete_actions, agent.continuous_action_space)
-
-            # --- CRITICAL FIX: Force SAC continuous output into discrete action index for discrete envs ---
-            elif agent.__class__.__name__ == 'SACAgent' and env.action_space.__class__.__name__ == 'Discrete':
-                # SAC output (action_output) is a continuous numpy array (e.g., [-0.8])
-                action_value = action_output.item() 
-                num_actions = env.action_space.n
-                
-                # Discretization strategy: map [-1, 1] range to [0, N-1] index
-                bins = np.linspace(-1.0, 1.0, num_actions + 1)[1:-1]
-                discrete_action_index = np.digitize(action_value, bins)
-                
-                env_action = int(discrete_action_index) # Use the integer index for the environment step
-                action_to_store = action_output # Store the continuous value in memory
-            # --- END CRITICAL FIX ---
+            # HANDLE DISCRETE ENVS (A2C/PPO on CartPole, Acrobot, MountainCar)
+            if agent.__class__.__name__ in ['A2CAgent', 'PPOAgent', 'SACAgent'] and is_discrete:
+                env_action = action_output 
+            
+            # HANDLE CONTINUOUS ENVS (A2C/PPO/SAC on Pendulum)
+            if env.action_space.__class__.__name__ == 'Box':
+                if not isinstance(env_action, np.ndarray) or env_action.shape == ():
+                    env_action = np.array([env_action], dtype=np.float32)
+                elif env_action.ndim == 0:
+                    env_action = np.expand_dims(env_action, axis=0)
 
             obs, reward, terminated, truncated, info = env.step(env_action)
             done = terminated or truncated
             
-            next_state_np = obs # Store raw numpy next state
+            next_state_np = obs 
             next_state = preprocess_state(obs, DEVICE) if not done else None
             
-            # 3. Store Transition (Off-Policy vs On-Policy)
+            # Store Transition (Off-Policy vs On-Policy)
             if agent.__class__.__name__ == 'SACAgent':
                 # SAC: Store the full transition into the ReplayMemory
                 agent.store_transition(state_np, action_to_store, reward, next_state_np, terminated or truncated)
@@ -139,7 +129,7 @@ def train_agent_pg(env_name, agent, hyperparams, num_episodes, log_wandb=True):
                     wandb.log({"train/loss": loss}, step=total_steps)
 
 
-        # --- Optimization (On-Policy Update: A2C/PPO) ---
+        # Optimization (On-Policy Update: A2C/PPO)
         if agent.__class__.__name__ in ['A2CAgent', 'PPOAgent'] and done:
             
             # Get the final V(s') estimate
@@ -147,15 +137,15 @@ def train_agent_pg(env_name, agent, hyperparams, num_episodes, log_wandb=True):
                 next_state_value = torch.zeros(1, 1).to(DEVICE)
             else:
                 with torch.no_grad():
-                    # Get the Value estimate V(s') from the Critic head of the ActorCriticModel
+                    # Get the Value estimate V(s') from the Critic head
                     if agent.is_discrete:
                         _, next_state_value = agent.model(state)
                     else: 
                         _, _, next_state_value = agent.model(state)
                         
-            loss = agent.learn(next_state_value) # Perform the On-Policy update
+            loss = agent.learn(next_state_value)
         
-        # --- W&B Logging ---
+        # W&B Logging
         if log_wandb:
             wandb.log({
                 "train/episode_reward": episode_reward, 
@@ -170,7 +160,6 @@ def train_agent_pg(env_name, agent, hyperparams, num_episodes, log_wandb=True):
     env.close()
     return agent
 
-# ... (rest of test_agent function, unchanged)
 def test_agent(env_name, agent, num_tests=100, record_video=False):
     """
     Tests the trained agent for stability and records one video.
@@ -182,9 +171,9 @@ def test_agent(env_name, agent, num_tests=100, record_video=False):
     if record_video:
         video_dir = f"videos/{env_name}_{agent.__class__.__name__.replace('Agent', '')}"
         env = RecordVideo(gym.make(env_name, render_mode="rgb_array"), 
-                          video_folder=video_dir, 
-                          episode_trigger=lambda x: x == 0, 
-                          name_prefix="Trained_Agent_Test")
+                            video_folder=video_dir, 
+                            episode_trigger=lambda x: x == 0, 
+                            name_prefix="Trained_Agent_Test")
     else:
         env = gym.make(env_name)
     
@@ -210,7 +199,7 @@ def test_agent(env_name, agent, num_tests=100, record_video=False):
         while not done:
             # Use greedy policy for testing
             with torch.no_grad():
-                env_action = None # Initialize 
+                env_action = None 
                 
                 if agent.__class__.__name__ == 'SACAgent':
                     # SAC Policy: use deterministic mean action
@@ -224,7 +213,7 @@ def test_agent(env_name, agent, num_tests=100, record_video=False):
                         discrete_action_index = np.digitize(action_value, bins)
                         env_action = int(discrete_action_index)
                     else:
-                        env_action = action_output # Continuous action (e.g., Pendulum)
+                        env_action = action_output 
 
                 elif agent.is_discrete:
                     # Discrete Policy (A2C/PPO): select the action with highest probability (argmax)
@@ -248,7 +237,7 @@ def test_agent(env_name, agent, num_tests=100, record_video=False):
             episode_steps += 1
             episode_reward += reward
             
-            if episode_steps > 1000: break # Safety break
+            if episode_steps > 1000: break 
 
         test_durations.append(episode_steps)
         test_rewards.append(episode_reward)
@@ -260,5 +249,4 @@ def test_agent(env_name, agent, num_tests=100, record_video=False):
     avg_reward = np.mean(test_rewards)
     std_reward = np.std(test_rewards)
     
-    # Return the full list for W&B logging (Question 2)
-    return avg_duration, std_duration, test_durations, avg_reward, std_reward
+    return avg_duration, std_duration, test_durations, avg_reward, std_reward, test_rewards

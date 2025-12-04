@@ -21,7 +21,7 @@ class A2CAgent(PolicyGradientAgentBase):
         values = torch.cat(self.values)
         
         advantage = returns - values.detach()
-        advantage = (advantage - advantage.mean()) / (advantage.std() + 1e-8)  # normalize
+        advantage = (advantage - advantage.mean()) / (advantage.std() + 1e-8)  
 
         # Critic loss
         critic_loss = 0.5 * advantage.pow(2).mean()

@@ -1,15 +1,14 @@
 import torch
 import torch.optim as optim
 import torch.nn.functional as F
-from sac_model import SacModel
-# Import memory classes from the updated train_utils_pg.py
+from sac_model import SacModel 
 from train_utils_pg import ReplayMemory, Transition 
 import numpy as np
 
 class SACAgent:
     def __init__(self, state_dim, action_dim, device, hyperparams, is_discrete):
         self.device = device
-        self.hyperparams = hyperparams # <-- Stored hyperparams
+        self.hyperparams = hyperparams 
         self.GAMMA = hyperparams['gamma']
         self.LR_ACTOR = hyperparams['learning_rate'] 
         self.LR_CRITIC = hyperparams.get('lr_critic', 1e-3)
@@ -17,17 +16,18 @@ class SACAgent:
         self.TAU = hyperparams.get('tau', 0.005) 
         self.BATCH_SIZE = hyperparams['batch_size']
         self.MEMORY_CAPACITY = hyperparams['memory_size']
+        self.is_discrete = is_discrete
         
-        if is_discrete:
-            pass 
-        
-        # --- Entropy Regularization ---
+        self.action_dim = action_dim 
+        self.action_scale = 2.0 
+
+        # Entropy Regularization
         self.alpha = hyperparams.get('alpha_start', 0.2) 
-        self.log_alpha = torch.zeros(1, requires_grad=True, device=device)
+        self.log_alpha = torch.tensor(np.log(self.alpha), dtype=torch.float32, requires_grad=True, device=device)
         self.alpha_optimizer = optim.Adam([self.log_alpha], lr=self.LR_ALPHA)
         self.target_entropy = -torch.tensor(action_dim, dtype=torch.float32, device=device)
 
-        # --- Network Initialization ---
+        # Network Initialization
         self.model = SacModel(state_dim, action_dim).to(device)
         self.target_model = SacModel(state_dim, action_dim).to(device)
         self.target_model.load_state_dict(self.model.state_dict())
@@ -39,19 +39,31 @@ class SACAgent:
         self.memory = ReplayMemory(self.MEMORY_CAPACITY) 
 
     def select_action(self, state, deterministic=False):
-        """SAC uses stochastic policy for exploration and optionally deterministic for testing."""
+        """
+        SAC uses stochastic policy for exploration (sampling) and scales the output.
+        Returns the scaled action array for env.step().
+        """
         with torch.no_grad():
             action, _, _ = self.model.actor(state, deterministic=deterministic, with_logprob=False)
-            return action.cpu().numpy().flatten()
+            
+            # Scale the action to the environment's actual bounds
+            env_action = action.cpu().numpy().flatten() * self.action_scale
+            
+            if env_action.ndim == 0:
+                return np.array([env_action.item()], dtype=np.float32)
+                
+            return env_action
     
     def store_transition(self, state, action, reward, next_state, terminated):
         """
         Stores a transition (s, a, r, s', done) in the Replay Memory.
+        SAC needs to store the UN-SCALED, continuous action for learning purposes.
         """
-        # Ensure inputs are flat NumPy arrays before storage
+        unscaled_action = action / self.action_scale
+        
         state_np_flat = state.flatten()
         next_state_np_flat = next_state.flatten()
-        action_np_flat = action.flatten() if isinstance(action, np.ndarray) else np.array([action])
+        action_np_flat = unscaled_action.flatten()
         
         self.memory.push(state_np_flat, action_np_flat, reward, next_state_np_flat, terminated)
     
@@ -60,10 +72,8 @@ class SACAgent:
         if len(self.memory) < self.BATCH_SIZE: 
             return None 
         
-        # --- 1. Sample Batch (Off-Policy) ---
+        # 1. Sample Batch (Off-Policy)
         transitions = self.memory.sample(self.BATCH_SIZE)
-        
-        # Convert sampled transition batch (now list of tuples) to Tensors
         batch = Transition(*zip(*transitions))
 
         state_batch = torch.as_tensor(np.array(batch.state), dtype=torch.float32, device=self.device)
@@ -72,7 +82,7 @@ class SACAgent:
         next_state_batch = torch.as_tensor(np.array(batch.next_state), dtype=torch.float32, device=self.device)
         done_batch = torch.as_tensor(np.array(batch.done), dtype=torch.float32, device=self.device).unsqueeze(-1)
         
-        # --- 2. CRITIC UPDATE (Clipped Double Q-Learning) ---
+        # 2. Critic Update
         with torch.no_grad():
             next_action, next_log_prob, _ = self.model.actor(next_state_batch)
             q1_target, q2_target = self.target_model(next_state_batch, next_action)
@@ -91,7 +101,7 @@ class SACAgent:
         critic_loss.backward()
         self.q_optimizer.step()
 
-        # --- 3. ACTOR UPDATE (Policy Update) ---
+        # 3. Actor Update
         new_action, log_prob, _ = self.model.actor(state_batch)
         q1_new, q2_new = self.model(state_batch, new_action)
         min_q_new = torch.min(q1_new, q2_new)
@@ -102,7 +112,7 @@ class SACAgent:
         actor_loss.backward()
         self.actor_optimizer.step()
         
-        # --- 4. ALPHA UPDATE (Entropy Tuning) ---
+        # 4. Alpha Update (Entropy Tuning)
         alpha_loss = -(self.log_alpha * (log_prob + self.target_entropy).detach()).mean()
 
         self.alpha_optimizer.zero_grad()
@@ -111,7 +121,7 @@ class SACAgent:
         
         self.alpha = self.log_alpha.exp().item()
         
-        # --- 5. Target Network Soft Update (Polyack Averaging) ---
+        # 5. Target Network Soft Update
         for param, target_param in zip(self.model.parameters(), self.target_model.parameters()):
             target_param.data.copy_(self.TAU * param.data + (1 - self.TAU) * target_param.data)
             
