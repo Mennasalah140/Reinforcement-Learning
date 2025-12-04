@@ -10,8 +10,8 @@ from sac_agent import SACAgent
 ENVIRONMENTS = {
     # 'CartPole-v1': {'discrete': True, 'action_dim': 2, 'torque': 1.0},
     # 'Acrobot-v1': {'discrete': True, 'action_dim': 3, 'torque': 1.0},
-    'MountainCar-v0': {'discrete': True, 'action_dim': 3, 'torque': 1.0},
-    # 'Pendulum-v1': {'discrete': False, 'action_dim': 1, 'torque': 2.0} 
+    # 'MountainCar-v0': {'discrete': True, 'action_dim': 3, 'torque': 1.0},
+    'Pendulum-v1': {'discrete': False, 'action_dim': 1, 'torque': 2.0} 
 }
 
 # HYPERPARAMETERS
@@ -135,9 +135,9 @@ ALGO_HYPERPARAMS = {
 
 SWEEP_VARIATIONS = {
     # Compare A2C, PPO, SAC
-    # 'A2C_BASE': {'algorithm': 'A2C'},
+    'A2C_BASE': {'algorithm': 'A2C'},
     # 'PPO_BASE': {'algorithm': 'PPO'}, 
-    'SAC_BASE': {'algorithm': 'SAC'}, 
+    # 'SAC_BASE': {'algorithm': 'SAC'}, 
 }
 
 
