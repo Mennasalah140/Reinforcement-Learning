@@ -1,2 +1,3 @@
 wandb/
 videos/
+__pycache__/
